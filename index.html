@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimizer Showdown: SGD vs. Adam</title>
+    <link rel="icon" type="image/png" href="pngtree-optimizing-line-icon-vector-png-image_6626593.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F8F7F4;
+            color: #2c3e50;
+        }
+        .nav-link {
+            transition: color 0.3s ease, border-bottom-color 0.3s ease;
+        }
+        .nav-link.active, .nav-link:hover {
+            color: #047857;
+            border-bottom-color: #047857;
+        }
+        .katex-display {
+            display: block;
+            text-align: center;
+            font-size: 1.1em;
+            line-height: 1.6;
+            padding: 1rem 0.5rem;
+            background-color: #f8fafc;
+            border-radius: 0.5rem;
+            border: 1px solid #e2e8f0;
+            white-space: nowrap;
+        }
+        .katex-var {
+            font-style: italic;
+            color: #059669;
+        }
+        .katex-op {
+            color: #be123c;
+        }
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            border-bottom: 2px dotted #059669;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 800px;
+            background-color: #334155;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -125px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.875rem;
+            font-weight: 400;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <!-- Chosen Palette: Calm Harmony Neutrals -->
+    <!-- Application Structure Plan: The application is structured as a guided, single-page narrative presentation with a sticky top navigation bar (Introduction, How They Work, Performance Battle, The Verdict). This structure logically follows the required presentation flow, allowing users to either scroll through the story or jump to specific topics. The core design choice is to use side-by-side comparisons and interactive elements (charts with toggles, tooltips for definitions) to make the dense, technical information digestible and engaging. This is more effective than a static report as it encourages exploration and direct comparison, which is the central theme of the source material (SGD vs. Adam). The flow moves from foundational knowledge (math) to empirical evidence (performance) and finally to a practical conclusion, mirroring a real-world decision-making process. -->
+    <!-- Visualization & Content Choices: 
+        1. Mathematical Mechanisms: Report Info -> Core update rules for SGD and Adam. Goal -> Inform/Educate. Viz/Presentation -> Styled HTML text blocks in a 2-column layout for direct comparison. Interaction -> On-hover tooltips for key mathematical terms (momentum, moments, epsilon). Justification -> Breaks down complex formulas without overwhelming the user, providing context on demand. Method -> HTML/CSS.
+        2. Convergence Analysis: Report Info -> Adam's faster convergence. Goal -> Compare change over time. Viz/Presentation -> Line chart showing 'Training Loss vs. Epochs'. Interaction -> Buttons to toggle visibility of SGD and Adam lines. Justification -> A line chart is the standard for showing training progress. Toggling lines allows for a clear, focused comparison of their speeds. Library -> Chart.js.
+        3. Generalization & Tuning: Report Info -> SGD's better generalization, hyperparameter complexity. Goal -> Compare final outcomes and complexity. Viz/Presentation -> Bar chart for 'Final Test Error' and a structured HTML comparison table for 'Hyperparameters'. Interaction -> Chart tooltips on hover. Justification -> Bar chart is ideal for comparing final metric values. A table is the clearest way to present and compare the parameters side-by-side. Library/Method -> Chart.js, HTML/Tailwind.
+        4. Conclusion: Report Info -> Final recommendation. Goal -> Summarize and Recommend. Viz/Presentation -> Clearly separated, styled summary cards for the final recommendation and justification. Interaction -> None. Justification -> Provides a strong, clear takeaway as the conclusion of the presentation. Method -> HTML/Tailwind.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <header class="bg-white/80 backdrop-blur-lg shadow-sm sticky top-0 z-50">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0">
+                    <h1 class="text-xl font-bold text-emerald-800">Omar Abdelghany</h1>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#introduction" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700 border-b-2 border-transparent">Introduction</a>
+                        <a href="#mechanism" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700 border-b-2 border-transparent">How They Work</a>
+                        <a href="#performance" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700 border-b-2 border-transparent">Performance Battle</a>
+                        <a href="#Conclusion" class="nav-link px-3 py-2 rounded-md text-sm font-medium text-slate-700 border-b-2 border-transparent">Conclusion</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        <section id="introduction" class="text-center mb-16 md:mb-24 scroll-mt-20">
+            <h2 class="text-3xl md:text-4xl font-bold tracking-tight text-slate-800 mb-4">SGD with Momentum vs. Adam</h2>
+            <p class="max-w-3xl mx-auto text-lg text-slate-600">
+                In deep learning, the optimizer is the engine that drives a model's training process. Choosing the right one is critical. This presentation dives into the trade-offs between two giants: the classic Stochastic Gradient Descent (SGD) with Momentum and the popular adaptive optimizer, Adam. We'll explore their mechanics, performance, and help you decide which is right for your project.
+            </p>
+        </section>
+
+        <section id="mechanism" class="mb-16 md:mb-24 scroll-mt-20">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-slate-800">How They Work: The Math Inside</h2>
+                <p class="max-w-3xl mx-auto mt-2 text-md text-slate-600">
+                    At their core, optimizers are defined by their update rules the formulas they use to adjust the model's weights. Here’s a side-by-side look at the mathematical engines of SGD with Momentum and Adam. Hover over the dotted terms for a quick explanation.
+                </p>
+            </div>
+            <div class="grid md:grid-cols-2 gap-8 lg:gap-12">
+                <div class="bg-white p-6 rounded-lg shadow-md border border-slate-200">
+                    <h3 class="text-2xl font-semibold mb-4 text-emerald-700">SGD with Momentum</h3>
+                    <p class="text-slate-600 mb-4">SGD with Momentum accelerates training by adding a fraction of the previous update vector to the current one. This helps it navigate ravines and progress faster in the relevant direction.</p>
+                    <div class="space-y-4">
+                        <div class="katex-display">
+                            <span class="katex-var">v<sub>t</sub></span> <span class="katex-op">=</span> <span class="tooltip"><span class="katex-var">β</span><span class="tooltiptext">Momentum term (typically ~0.9), determining how much past gradients influence the current update.</span></span><span class="katex-var">v<sub>t-1</sub></span> <span class="katex-op">+</span> <span class="katex-var">η</span>∇<span class="katex-var">J(θ<sub>t-1</sub>)</span>
+                        </div>
+                        <div class="katex-display">
+                            <span class="katex-var">θ<sub>t</sub></span> <span class="katex-op">=</span> <span class="katex-var">θ<sub>t-1</sub></span> <span class="katex-op">-</span> <span class="katex-var">v<sub>t</sub></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md border border-slate-200">
+                    <h3 class="text-2xl font-semibold mb-4 text-emerald-700">Adam (Adaptive Moment Estimation)</h3>
+                    <p class="text-slate-600 mb-4">Adam computes adaptive learning rates for each parameter by keeping track of both the first and second moments of the gradients.</p>
+                    <div class="space-y-4">
+                         <div class="katex-display">
+                             <span class="tooltip"><span class="katex-var">m<sub>t</sub></span><span class="tooltiptext">The first moment (the mean of gradients), similar to momentum. Controlled by β1.</span></span> <span class="katex-op">=</span> <span class="katex-var">β<sub>1</sub></span><span class="katex-var">m<sub>t-1</sub></span> <span class="katex-op">+</span> (1 <span class="katex-op">-</span> <span class="katex-var">β<sub>1</sub></span>)∇<span class="katex-var">J(θ<sub>t-1</sub>)</span>
+                        </div>
+                        <div class="katex-display">
+                             <span class="tooltip"><span class="katex-var">v<sub>t</sub></span><span class="tooltiptext">The second moment (the uncentered variance of gradients). Controlled by β2.</span></span> <span class="katex-op">=</span> <span class="katex-var">β<sub>2</sub></span><span class="katex-var">v<sub>t-1</sub></span> <span class="katex-op">+</span> (1 <span class="katex-op">-</span> <span class="katex-var">β<sub>2</sub></span>)(∇<span class="katex-var">J(θ<sub>t-1</sub>)</span>)<sup>2</sup>
+                        </div>
+                        <div class="katex-display">
+                           <span class="katex-var">θ<sub>t</sub></span> <span class="katex-op">=</span> <span class="katex-var">θ<sub>t-1</sub></span> <span class="katex-op">-</span> <frac><span class="katex-var">α</span><span class="katex-var">m̂<sub>t</sub></span></frac><mrow><span class="katex-op">√</span><span class="katex-var">v̂<sub>t</sub></span> <span class="katex-op">+</span> <span class="tooltip"><span class="katex-var">ϵ</span><span class="tooltiptext">A small term (e.g., 1e-8) to prevent division by zero.</span></span></mrow>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="performance" class="mb-16 md:mb-24 scroll-mt-20">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-slate-800">Performance Battle: Key Trade-offs</h2>
+                <p class="max-w-3xl mx-auto mt-2 text-md text-slate-600">
+                    How do these different mathematical approaches translate to real-world performance? We'll compare them across three critical axes: convergence speed, final model accuracy (generalization), and the complexity of tuning them.
+                </p>
+            </div>
+            <div class="space-y-12">
+                
+                <div class="bg-white p-6 rounded-lg shadow-lg border border-slate-200">
+                    <h3 class="text-2xl font-semibold mb-1 text-center text-slate-800">1. Convergence Speed</h3>
+                    <p class="text-center text-slate-600 mb-6 max-w-2xl mx-auto">Adam often converges much faster in the initial phases of training. Its adaptive learning rate adjusts for each parameter, allowing it to make more aggressive updates on sparse gradients and navigate complex loss landscapes more efficiently.</p>
+                    <div class="chart-container">
+                        <canvas id="convergenceChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-lg border border-slate-200">
+                    <h3 class="text-2xl font-semibold mb-1 text-center text-slate-800">2. Generalization Ability</h3>
+                    <p class="text-center text-slate-600 mb-6 max-w-2xl mx-auto">While Adam is fast, there's a common belief that a well-tuned SGD with momentum can lead to a model that generalizes better, achieving a lower error on the test set. This is thought to be because Adam can converge to sharp, narrow minima, while SGD is more likely to find broader, flatter minima that perform better on unseen data.</p>
+                     <div class="chart-container">
+                        <canvas id="generalizationChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-6 rounded-lg shadow-lg border border-slate-200">
+                    <h3 class="text-2xl font-semibold mb-6 text-center text-slate-800">3. Hyperparameter Tuning Complexity</h3>
+                    <p class="text-center text-slate-600 mb-6 max-w-2xl mx-auto">Tuning is a crucial part of getting the best performance. While Adam has more parameters, its defaults often work well. SGD, with fewer knobs, can be more sensitive and require careful manual tuning of the learning rate schedule.</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full max-w-2xl mx-auto text-left border-collapse">
+                            <thead>
+                                <tr>
+                                    <th class="p-3 font-semibold text-sm text-slate-100 bg-slate-700 rounded-tl-lg">Optimizer</th>
+                                    <th class="p-3 font-semibold text-sm text-slate-100 bg-slate-700">Key Hyperparameters</th>
+                                    <th class="p-3 font-semibold text-sm text-slate-100 bg-slate-700 rounded-tr-lg">Tuning Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white">
+                                <tr class="border-b border-slate-200">
+                                    <td class="p-3 font-semibold text-emerald-700">SGD w/ Momentum</td>
+                                    <td class="p-3 text-slate-600 font-mono">η (learning rate), β (momentum)</td>
+                                    <td class="p-3 text-slate-600">Highly sensitive to learning rate. Often requires a carefully designed learning rate schedule (decay) for best results.</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-3 font-semibold text-emerald-700">Adam</td>
+                                    <td class="p-3 text-slate-600 font-mono">α (step size), β1, β2, ϵ</td>
+                                    <td class="p-3 text-slate-600">Defaults (α=0.001, β1=0.9, β2=0.999) are a great starting point. Less sensitive to learning rate, but can still benefit from tuning.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <section id="Conclusion" class="scroll-mt-20">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-slate-800">Conclusion & Recommendation</h2>
+                <p class="max-w-3xl mx-auto mt-2 text-md text-slate-600">
+                    After analyzing the mechanisms and performance, which optimizer should you choose for a large-scale, industry-level project?
+                </p>
+            </div>
+            <div class="max-w-4xl mx-auto bg-emerald-50 border-l-4 border-emerald-500 text-emerald-800 p-6 rounded-r-lg shadow-lg">
+                <h3 class="text-2xl font-bold mb-3">Conclusion: Start with Adam, but consider SGD for final tuning.</h3>
+                <p class="text-lg">
+                    For a large-scale industry project where development speed and reliable convergence are critical, <b>Adam is the recommended starting point.</b>
+                </p>
+                <ul class="list-disc list-inside mt-4 space-y-2 text-md">
+                    <li><strong>Why Adam?</strong> It's fast, robust, and its default parameters provide strong performance out-of-the-box. This drastically reduces the initial time spent on hyperparameter tuning, allowing teams to iterate on model architecture and features more quickly.</li>
+                    <li><strong>Recommendation:</strong> If you have enough time and computing power to fine-tune your model, using SGD with Momentum is usually worth it, it can often give slightly better and more reliable results in the end.</li>
+                </ul>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-slate-800 mt-16 md:mt-24">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-slate-400 text-sm">
+            <p>&copy; 2025 Samsung Innovation Campus AI 702</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sections = document.querySelectorAll('section');
+            const navLinks = document.querySelectorAll('.nav-link');
+
+            const observerOptions = {
+                root: null,
+                rootMargin: '0px',
+                threshold: 0.4
+            };
+
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const id = entry.target.getAttribute('id');
+                        navLinks.forEach(link => {
+                            link.classList.remove('active');
+                            if (link.getAttribute('href') === `#${id}`) {
+                                link.classList.add('active');
+                            }
+                        });
+                    }
+                });
+            }, observerOptions);
+
+            sections.forEach(section => {
+                observer.observe(section);
+            });
+
+            const renderConvergenceChart = () => {
+                const ctx = document.getElementById('convergenceChart').getContext('2d');
+                const labels = Array.from({ length: 20 }, (_, i) => `Epoch ${i + 1}`);
+                const sgdData = [3.5, 2.8, 2.4, 2.1, 1.9, 1.7, 1.5, 1.35, 1.2, 1.1, 1.0, 0.9, 0.82, 0.75, 0.7, 0.65, 0.61, 0.58, 0.55, 0.53];
+                const adamData = [3.0, 2.1, 1.5, 1.1, 0.8, 0.65, 0.55, 0.5, 0.47, 0.45, 0.44, 0.43, 0.42, 0.41, 0.41, 0.40, 0.40, 0.39, 0.39, 0.39];
+                
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Adam',
+                            data: adamData,
+                            borderColor: '#059669',
+                            backgroundColor: 'rgba(5, 150, 105, 0.1)',
+                            fill: true,
+                            tension: 0.3,
+                        }, {
+                            label: 'SGD w/ Momentum',
+                            data: sgdData,
+                            borderColor: '#4f46e5',
+                            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                            fill: true,
+                            tension: 0.3,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: { display: true, text: 'Training Loss vs. Epochs (Simulated)', font: {size: 16}},
+                            tooltip: { mode: 'index', intersect: false }
+                        },
+                        scales: {
+                            y: { title: { display: true, text: 'Training Loss' } },
+                            x: { title: { display: true, text: 'Epochs' } }
+                        },
+                        interaction: { mode: 'nearest', axis: 'x', intersect: false }
+                    }
+                });
+            };
+
+            const renderGeneralizationChart = () => {
+                const ctx = document.getElementById('generalizationChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Adam', 'SGD w/ Momentum'],
+                        datasets: [{
+                            label: 'Final Test Error (%)',
+                            data: [10.5, 9.8],
+                            backgroundColor: ['#10b981', '#6366f1'],
+                            borderColor: ['#059669', '#4f46e5'],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        plugins: {
+                            title: { display: true, text: 'Final Test Error (Simulated)', font: {size: 16} },
+                            legend: { display: false }
+                        },
+                         scales: {
+                            x: {
+                                beginAtZero: true,
+                                title: { display: true, text: 'Error Rate (%)' }
+                            }
+                        }
+                    }
+                });
+            };
+            
+            let chartObserverOptions = {
+                root: null,
+                rootMargin: "0px",
+                threshold: 0.1
+            };
+
+            let chartObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        if(entry.target.id === 'convergenceChart') renderConvergenceChart();
+                        if(entry.target.id === 'generalizationChart') renderGeneralizationChart();
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, chartObserverOptions);
+            
+            chartObserver.observe(document.getElementById('convergenceChart'));
+            chartObserver.observe(document.getElementById('generalizationChart'));
+        });
+    </script>
+
+</body>
+</html>
